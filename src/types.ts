@@ -37,4 +37,4 @@ export interface EssayPlan {
   };
 }
 
-export const CATEGORIES = ['Littérature', 'Art', 'Société', 'Philosophie', 'Langue'];
+export const CATEGORIES = ['Littérature', 'Art', 'Société', 'Philosophie', 'Langue','Animaux'];

@@ -4,15 +4,22 @@ export interface Argument {
   category: string;
 }
 
+export interface EssayArgument {
+  id: string;
+  content: string;
+  references?: string;
+}
+
+export interface EssaySubPart {
+  id: string;
+  title: string;
+  arguments: EssayArgument[];
+}
+
 export interface EssayPart {
   id: string;
   title: string;
-  subParts: {
-    id: string;
-    content: string;
-    references?: string;
-    argumentId?: string;
-  }[];
+  subParts: EssaySubPart[];
 }
 
 export interface EssayPlan {

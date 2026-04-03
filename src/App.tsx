@@ -32,16 +32,22 @@ const INITIAL_PLAN: EssayPlan = {
       id: 'part-1',
       title: 'Thèse (Première partie)',
       subParts: [
-        { id: 'sub-1-1', content: '', references: '' },
-        { id: 'sub-1-2', content: '', references: '' }
+        { 
+          id: 'sub-1-1', 
+          title: 'Première sous-partie', 
+          arguments: [{ id: 'arg-1-1-1', content: '', references: '' }] 
+        }
       ]
     },
     {
       id: 'part-2',
       title: 'Antithèse (Deuxième partie)',
       subParts: [
-        { id: 'sub-2-1', content: '', references: '' },
-        { id: 'sub-2-2', content: '', references: '' }
+        { 
+          id: 'sub-2-1', 
+          title: 'Première sous-partie', 
+          arguments: [{ id: 'arg-2-1-1', content: '', references: '' }] 
+        }
       ]
     }
   ],
@@ -127,7 +133,15 @@ export default function App() {
     const newId = `part-${plan.development.length + 1}`;
     setPlan(prev => ({
       ...prev,
-      development: [...prev.development, { id: newId, title: 'Nouvelle partie', subParts: [{ id: `${newId}-1`, content: '', references: '' }] }]
+      development: [...prev.development, { 
+        id: newId, 
+        title: 'Nouvelle partie', 
+        subParts: [{ 
+          id: `${newId}-sub-1`, 
+          title: 'Nouvelle sous-partie', 
+          arguments: [{ id: `${newId}-sub-1-arg-1`, content: '', references: '' }] 
+        }] 
+      }]
     }));
   };
 
@@ -136,18 +150,67 @@ export default function App() {
       ...prev,
       development: prev.development.map(p => 
         p.id === partId 
-          ? { ...p, subParts: [...p.subParts, { id: `${p.id}-${p.subParts.length + 1}`, content: '', references: '' }] }
+          ? { 
+              ...p, 
+              subParts: [...p.subParts, { 
+                id: `${p.id}-sub-${p.subParts.length + 1}`, 
+                title: 'Nouvelle sous-partie', 
+                arguments: [{ id: `${p.id}-sub-${p.subParts.length + 1}-arg-1`, content: '', references: '' }] 
+              }] 
+            }
           : p
       )
     }));
   };
 
-  const updateSubPart = (partId: string, subId: string, value: string, field: 'content' | 'references' = 'content') => {
+  const addArgument = (partId: string, subPartId: string) => {
     setPlan(prev => ({
       ...prev,
       development: prev.development.map(p => 
         p.id === partId 
-          ? { ...p, subParts: p.subParts.map(s => s.id === subId ? { ...s, [field]: value } : s) }
+          ? { 
+              ...p, 
+              subParts: p.subParts.map(s => 
+                s.id === subPartId 
+                  ? { 
+                      ...s, 
+                      arguments: [...s.arguments, { id: `${s.id}-arg-${s.arguments.length + 1}`, content: '', references: '' }] 
+                    }
+                  : s
+              )
+            }
+          : p
+      )
+    }));
+  };
+
+  const updateSubPartTitle = (partId: string, subId: string, title: string) => {
+    setPlan(prev => ({
+      ...prev,
+      development: prev.development.map(p => 
+        p.id === partId 
+          ? { ...p, subParts: p.subParts.map(s => s.id === subId ? { ...s, title } : s) }
+          : p
+      )
+    }));
+  };
+
+  const updateArgument = (partId: string, subPartId: string, argId: string, value: string, field: 'content' | 'references' = 'content') => {
+    setPlan(prev => ({
+      ...prev,
+      development: prev.development.map(p => 
+        p.id === partId 
+          ? { 
+              ...p, 
+              subParts: p.subParts.map(s => 
+                s.id === subPartId 
+                  ? { 
+                      ...s, 
+                      arguments: s.arguments.map(a => a.id === argId ? { ...a, [field]: value } : a) 
+                    }
+                  : s
+              )
+            }
           : p
       )
     }));
@@ -162,7 +225,10 @@ export default function App() {
       `II. DÉVELOPPEMENT\n` +
       plan.development.map((p, i) => 
         `${i + 1}. ${p.title}\n` + 
-        p.subParts.map((s, j) => `   ${i + 1}.${j + 1}. ${s.content}${s.references ? ` [Réf: ${s.references}]` : ''}`).join('\n')
+        p.subParts.map((s, j) => 
+          `   ${String.fromCharCode(65 + j)}. ${s.title}\n` +
+          s.arguments.map((a, k) => `      ${k + 1}. ${a.content}${a.references ? ` [Réf: ${a.references}]` : ''}`).join('\n')
+        ).join('\n')
       ).join('\n\n') +
       `\n\nIII. CONCLUSION\n` +
       `Synthèse : ${plan.conclusion.synthese}\n` +
@@ -199,16 +265,20 @@ export default function App() {
     const currentPlayerPlan = duelPlans[duelTurn];
     const nextPlayer = duelTurn === 1 ? 2 : 1;
 
-    // Find first empty subpart in development
+    // Find first empty argument in development
     let updated = false;
     const newDev = currentPlayerPlan.development.map(part => {
       if (updated) return part;
       const newSubParts = part.subParts.map(sub => {
-        if (!updated && !sub.content) {
-          updated = true;
-          return { ...sub, content: arg.text };
-        }
-        return sub;
+        if (updated) return sub;
+        const newArgs = sub.arguments.map(a => {
+          if (!updated && !a.content) {
+            updated = true;
+            return { ...a, content: arg.text };
+          }
+          return a;
+        });
+        return { ...sub, arguments: newArgs };
       });
       return { ...part, subParts: newSubParts };
     });
@@ -221,7 +291,7 @@ export default function App() {
       setDuelTurn(nextPlayer);
 
       // Check if both plans are full
-      const isFull = (p: EssayPlan) => p.development.every(part => part.subParts.every(sub => sub.content !== ''));
+      const isFull = (p: EssayPlan) => p.development.every(part => part.subParts.every(sub => sub.arguments.every(a => a.content !== '')));
       if (isFull(duelPlans[1]) && isFull(duelPlans[2])) {
         setDuelWinner(0); // Draw or end of game
       }
@@ -419,21 +489,26 @@ export default function App() {
                           <div key={part.id} className="space-y-3">
                             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{pIdx + 1}. {part.title}</h4>
                             {part.subParts.map((sub, sIdx) => (
-                              <div 
-                                key={sub.id} 
-                                className={cn(
-                                  "p-3 rounded-xl border text-sm min-h-[60px] flex items-center justify-center transition-all",
-                                  sub.content 
-                                    ? "bg-slate-50 border-slate-100 text-slate-700" 
-                                    : (duelTurn === pNum ? "bg-indigo-50/30 border-dashed border-indigo-200 text-indigo-400 animate-pulse" : "bg-slate-50/50 border-dashed border-slate-200 text-slate-300")
-                                )}
-                              >
-                                <div className="flex flex-col items-center gap-1 text-center">
-                                  <span>{sub.content || `Argument ${pIdx + 1}.${sIdx + 1}`}</span>
-                                  {sub.references && (
-                                    <span className="text-[10px] text-slate-400 italic">— {sub.references}</span>
-                                  )}
-                                </div>
+                              <div key={sub.id} className="space-y-2">
+                                <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{String.fromCharCode(65 + sIdx)}. {sub.title}</h5>
+                                {sub.arguments.map((arg, aIdx) => (
+                                  <div 
+                                    key={arg.id} 
+                                    className={cn(
+                                      "p-3 rounded-xl border text-sm min-h-[60px] flex items-center justify-center transition-all",
+                                      arg.content 
+                                        ? "bg-slate-50 border-slate-100 text-slate-700" 
+                                        : (duelTurn === pNum ? "bg-indigo-50/30 border-dashed border-indigo-200 text-indigo-400 animate-pulse" : "bg-slate-50/50 border-dashed border-slate-200 text-slate-300")
+                                    )}
+                                  >
+                                    <div className="flex flex-col items-center gap-1 text-center">
+                                      <span>{arg.content || `Arg ${pIdx + 1}.${sIdx + 1}.${aIdx + 1}`}</span>
+                                      {arg.references && (
+                                        <span className="text-[10px] text-slate-400 italic">— {arg.references}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             ))}
                           </div>
@@ -559,72 +634,110 @@ export default function App() {
                             <Trash2 size={16} />
                           </button>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-8">
                           {part.subParts.map((sub, sIdx) => (
-                            <div key={sub.id} className="flex gap-4">
-                              <div className="pt-3">
-                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                  {pIdx + 1}.{sIdx + 1}
-                                </div>
-                              </div>
-                              <div className="flex-1 relative group/sub space-y-2">
-                                <div className="relative">
-                                  <textarea 
-                                    value={sub.content}
-                                    onChange={(e) => updateSubPart(part.id, sub.id, e.target.value, 'content')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                      const text = e.dataTransfer.getData('text/plain');
-                                      if (text) {
-                                        const currentContent = sub.content;
-                                        const newContent = currentContent 
-                                          ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
-                                          : text;
-                                        updateSubPart(part.id, sub.id, newContent, 'content');
-                                      }
-                                    }}
-                                    className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
-                                    rows={2}
-                                    placeholder="Déposez un argument ici ou écrivez..."
+                            <div key={sub.id} className="space-y-4 pl-4 border-l-2 border-indigo-50">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span className="font-bold text-indigo-400">{String.fromCharCode(65 + sIdx)}.</span>
+                                  <input 
+                                    type="text"
+                                    value={sub.title}
+                                    onChange={(e) => updateSubPartTitle(part.id, sub.id, e.target.value)}
+                                    className="bg-transparent font-semibold text-slate-700 outline-none focus:border-b border-indigo-200 w-full text-sm"
+                                    placeholder="Titre de la sous-partie..."
                                   />
-                                  <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
-                                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
-                                  </div>
                                 </div>
-                                <input 
-                                  type="text"
-                                  value={sub.references || ''}
-                                  onChange={(e) => updateSubPart(part.id, sub.id, e.target.value, 'references')}
-                                  className="w-full p-2 bg-white border border-slate-100 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                                  placeholder="Références (auteur, œuvre, date...)"
-                                />
+                                <button 
+                                  onClick={() => {
+                                    const newDev = [...plan.development];
+                                    newDev[pIdx].subParts = newDev[pIdx].subParts.filter(s => s.id !== sub.id);
+                                    setPlan({ ...plan, development: newDev });
+                                  }}
+                                  className="text-slate-300 hover:text-red-400 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
                               </div>
-                              <button 
-                                onClick={() => {
-                                  const newDev = [...plan.development];
-                                  newDev[pIdx].subParts = newDev[pIdx].subParts.filter(s => s.id !== sub.id);
-                                  setPlan({ ...plan, development: newDev });
-                                }}
-                                className="pt-3 text-slate-300 hover:text-red-400 transition-colors"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+
+                              <div className="space-y-4 ml-6">
+                                {sub.arguments.map((arg, aIdx) => (
+                                  <div key={arg.id} className="flex gap-4">
+                                    <div className="pt-3">
+                                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                        {aIdx + 1}
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 relative group/sub space-y-2">
+                                      <div className="relative">
+                                        <textarea 
+                                          value={arg.content}
+                                          onChange={(e) => updateArgument(part.id, sub.id, arg.id, e.target.value, 'content')}
+                                          onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                          }}
+                                          onDragLeave={(e) => {
+                                            e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                          }}
+                                          onDrop={(e) => {
+                                            e.preventDefault();
+                                            e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                            const text = e.dataTransfer.getData('text/plain');
+                                            if (text) {
+                                              const currentContent = arg.content;
+                                              const newContent = currentContent 
+                                                ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
+                                                : text;
+                                              updateArgument(part.id, sub.id, arg.id, newContent, 'content');
+                                            }
+                                          }}
+                                          className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
+                                          rows={2}
+                                          placeholder="Déposez un argument ici ou écrivez..."
+                                        />
+                                        <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
+                                          <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
+                                        </div>
+                                      </div>
+                                      <input 
+                                        type="text"
+                                        value={arg.references || ''}
+                                        onChange={(e) => updateArgument(part.id, sub.id, arg.id, e.target.value, 'references')}
+                                        className="w-full p-2 bg-white border border-slate-100 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        placeholder="Références (auteur, œuvre, date...)"
+                                      />
+                                    </div>
+                                    <button 
+                                      onClick={() => {
+                                        const newDev = [...plan.development];
+                                        newDev[pIdx].subParts = newDev[pIdx].subParts.map(s => 
+                                          s.id === sub.id ? { ...s, arguments: s.arguments.filter(a => a.id !== arg.id) } : s
+                                        );
+                                        setPlan({ ...plan, development: newDev });
+                                      }}
+                                      className="pt-3 text-slate-300 hover:text-red-400 transition-colors"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                                <button 
+                                  onClick={() => addArgument(part.id, sub.id)}
+                                  className="flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                >
+                                  <Plus size={12} />
+                                  Ajouter un argument/exemple
+                                </button>
+                              </div>
                             </div>
                           ))}
                           <button 
                             onClick={() => addSubPart(part.id)}
-                            className="ml-10 flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-xs font-bold uppercase tracking-wider transition-colors"
+                            className="ml-4 flex items-center gap-2 text-indigo-400 hover:text-indigo-600 text-xs font-bold uppercase tracking-wider transition-colors"
                           >
                             <Plus size={14} />
-                            Ajouter une sous-partie
+                            Ajouter une sous-partie (A, B, C...)
                           </button>
                         </div>
                       </motion.div>
@@ -691,27 +804,34 @@ export default function App() {
 
                     <section>
                       <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">II. Développement</h2>
-                      <div className="space-y-8">
+                      <div className="space-y-12">
                         {plan.development.map((p, i) => (
                           <div key={p.id} className="pl-6 border-l-2 border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-800 mb-4">{i + 1}. {p.title}</h3>
-                            <ul className="space-y-4 list-none p-0">
+                            <h3 className="text-lg font-bold text-slate-800 mb-6">{i + 1}. {p.title}</h3>
+                            <div className="space-y-8">
                               {p.subParts.map((s, j) => (
-                                <li key={s.id} className="text-slate-700 leading-relaxed">
-                                  <div className="flex gap-3">
-                                    <span className="font-bold text-indigo-400 shrink-0">{i + 1}.{j + 1}</span>
-                                    <div>
-                                      {s.content || "..."}
-                                      {s.references && (
-                                        <span className="block mt-1 text-xs text-slate-400 font-medium italic">
-                                          — {s.references}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </li>
+                                <div key={s.id} className="space-y-4">
+                                  <h4 className="text-md font-bold text-slate-700">{String.fromCharCode(65 + j)}. {s.title}</h4>
+                                  <ul className="space-y-4 list-none p-0 ml-4">
+                                    {s.arguments.map((a, k) => (
+                                      <li key={a.id} className="text-slate-700 leading-relaxed">
+                                        <div className="flex gap-3">
+                                          <span className="font-bold text-indigo-300 shrink-0">{k + 1}.</span>
+                                          <div>
+                                            {a.content || "..."}
+                                            {a.references && (
+                                              <span className="block mt-1 text-xs text-slate-400 font-medium italic">
+                                                — {a.references}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -807,6 +927,7 @@ export default function App() {
             </span>
             <span>{plan.development.length} Parties</span>
             <span>{plan.development.reduce((acc, p) => acc + p.subParts.length, 0)} Sous-parties</span>
+            <span>{plan.development.reduce((acc, p) => acc + p.subParts.reduce((a, s) => a + s.arguments.length, 0), 0)} Arguments</span>
           </div>
           <div>
             © 2026 Planificateur d'Essai Français

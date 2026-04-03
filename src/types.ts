@@ -10,6 +10,7 @@ export interface EssayPart {
   subParts: {
     id: string;
     content: string;
+    references?: string;
     argumentId?: string;
   }[];
 }

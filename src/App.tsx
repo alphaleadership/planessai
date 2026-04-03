@@ -32,16 +32,16 @@ const INITIAL_PLAN: EssayPlan = {
       id: 'part-1',
       title: 'Thèse (Première partie)',
       subParts: [
-        { id: 'sub-1-1', content: '' },
-        { id: 'sub-1-2', content: '' }
+        { id: 'sub-1-1', content: '', references: '' },
+        { id: 'sub-1-2', content: '', references: '' }
       ]
     },
     {
       id: 'part-2',
       title: 'Antithèse (Deuxième partie)',
       subParts: [
-        { id: 'sub-2-1', content: '' },
-        { id: 'sub-2-2', content: '' }
+        { id: 'sub-2-1', content: '', references: '' },
+        { id: 'sub-2-2', content: '', references: '' }
       ]
     }
   ],
@@ -127,7 +127,7 @@ export default function App() {
     const newId = `part-${plan.development.length + 1}`;
     setPlan(prev => ({
       ...prev,
-      development: [...prev.development, { id: newId, title: 'Nouvelle partie', subParts: [{ id: `${newId}-1`, content: '' }] }]
+      development: [...prev.development, { id: newId, title: 'Nouvelle partie', subParts: [{ id: `${newId}-1`, content: '', references: '' }] }]
     }));
   };
 
@@ -136,18 +136,18 @@ export default function App() {
       ...prev,
       development: prev.development.map(p => 
         p.id === partId 
-          ? { ...p, subParts: [...p.subParts, { id: `${p.id}-${p.subParts.length + 1}`, content: '' }] }
+          ? { ...p, subParts: [...p.subParts, { id: `${p.id}-${p.subParts.length + 1}`, content: '', references: '' }] }
           : p
       )
     }));
   };
 
-  const updateSubPart = (partId: string, subId: string, content: string) => {
+  const updateSubPart = (partId: string, subId: string, value: string, field: 'content' | 'references' = 'content') => {
     setPlan(prev => ({
       ...prev,
       development: prev.development.map(p => 
         p.id === partId 
-          ? { ...p, subParts: p.subParts.map(s => s.id === subId ? { ...s, content } : s) }
+          ? { ...p, subParts: p.subParts.map(s => s.id === subId ? { ...s, [field]: value } : s) }
           : p
       )
     }));
@@ -162,7 +162,7 @@ export default function App() {
       `II. DÉVELOPPEMENT\n` +
       plan.development.map((p, i) => 
         `${i + 1}. ${p.title}\n` + 
-        p.subParts.map((s, j) => `   ${i + 1}.${j + 1}. ${s.content}`).join('\n')
+        p.subParts.map((s, j) => `   ${i + 1}.${j + 1}. ${s.content}${s.references ? ` [Réf: ${s.references}]` : ''}`).join('\n')
       ).join('\n\n') +
       `\n\nIII. CONCLUSION\n` +
       `Synthèse : ${plan.conclusion.synthese}\n` +
@@ -428,7 +428,12 @@ export default function App() {
                                     : (duelTurn === pNum ? "bg-indigo-50/30 border-dashed border-indigo-200 text-indigo-400 animate-pulse" : "bg-slate-50/50 border-dashed border-slate-200 text-slate-300")
                                 )}
                               >
-                                {sub.content || `Argument ${pIdx + 1}.${sIdx + 1}`}
+                                <div className="flex flex-col items-center gap-1 text-center">
+                                  <span>{sub.content || `Argument ${pIdx + 1}.${sIdx + 1}`}</span>
+                                  {sub.references && (
+                                    <span className="text-[10px] text-slate-400 italic">— {sub.references}</span>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -562,36 +567,45 @@ export default function App() {
                                   {pIdx + 1}.{sIdx + 1}
                                 </div>
                               </div>
-                              <div className="flex-1 relative group/sub">
-                                <textarea 
-                                  value={sub.content}
-                                  onChange={(e) => updateSubPart(part.id, sub.id, e.target.value)}
-                                  onDragOver={(e) => {
-                                    e.preventDefault();
-                                    e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                  }}
-                                  onDragLeave={(e) => {
-                                    e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                  }}
-                                  onDrop={(e) => {
-                                    e.preventDefault();
-                                    e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                    const text = e.dataTransfer.getData('text/plain');
-                                    if (text) {
-                                      const currentContent = sub.content;
-                                      const newContent = currentContent 
-                                        ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
-                                        : text;
-                                      updateSubPart(part.id, sub.id, newContent);
-                                    }
-                                  }}
-                                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
-                                  rows={2}
-                                  placeholder="Déposez un argument ici ou écrivez..."
-                                />
-                                <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
-                                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
+                              <div className="flex-1 relative group/sub space-y-2">
+                                <div className="relative">
+                                  <textarea 
+                                    value={sub.content}
+                                    onChange={(e) => updateSubPart(part.id, sub.id, e.target.value, 'content')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                      const text = e.dataTransfer.getData('text/plain');
+                                      if (text) {
+                                        const currentContent = sub.content;
+                                        const newContent = currentContent 
+                                          ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
+                                          : text;
+                                        updateSubPart(part.id, sub.id, newContent, 'content');
+                                      }
+                                    }}
+                                    className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
+                                    rows={2}
+                                    placeholder="Déposez un argument ici ou écrivez..."
+                                  />
+                                  <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
+                                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
+                                  </div>
                                 </div>
+                                <input 
+                                  type="text"
+                                  value={sub.references || ''}
+                                  onChange={(e) => updateSubPart(part.id, sub.id, e.target.value, 'references')}
+                                  className="w-full p-2 bg-white border border-slate-100 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                  placeholder="Références (auteur, œuvre, date...)"
+                                />
                               </div>
                               <button 
                                 onClick={() => {
@@ -681,11 +695,20 @@ export default function App() {
                         {plan.development.map((p, i) => (
                           <div key={p.id} className="pl-6 border-l-2 border-slate-100">
                             <h3 className="text-lg font-bold text-slate-800 mb-4">{i + 1}. {p.title}</h3>
-                            <ul className="space-y-3 list-none p-0">
+                            <ul className="space-y-4 list-none p-0">
                               {p.subParts.map((s, j) => (
                                 <li key={s.id} className="text-slate-700 leading-relaxed">
-                                  <span className="font-bold text-indigo-400 mr-2">{i + 1}.{j + 1}</span>
-                                  {s.content || "..."}
+                                  <div className="flex gap-3">
+                                    <span className="font-bold text-indigo-400 shrink-0">{i + 1}.{j + 1}</span>
+                                    <div>
+                                      {s.content || "..."}
+                                      {s.references && (
+                                        <span className="block mt-1 text-xs text-slate-400 font-medium italic">
+                                          — {s.references}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </li>
                               ))}
                             </ul>

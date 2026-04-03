@@ -54,13 +54,22 @@ const INITIAL_PLAN: EssayPlan = {
 
 export default function App() {
   const [plan, setPlan] = useState<EssayPlan>(INITIAL_PLAN);
-  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview' | 'duel'>('edit');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [argumentsList, setArgumentsList] = useState<Argument[]>([]);
   const [subjectsList, setSubjectsList] = useState<string[]>([]);
   const [isLoadingArgs, setIsLoadingArgs] = useState(true);
   const [showSubjectBank, setShowSubjectBank] = useState(false);
   const [subjectSearch, setSubjectSearch] = useState('');
+
+  // Duel Mode State
+  const [duelSubject, setDuelSubject] = useState('');
+  const [duelTurn, setDuelTurn] = useState<1 | 2>(1);
+  const [duelPlans, setDuelPlans] = useState<{1: EssayPlan, 2: EssayPlan}>({
+    1: JSON.parse(JSON.stringify(INITIAL_PLAN)),
+    2: JSON.parse(JSON.stringify(INITIAL_PLAN))
+  });
+  const [duelWinner, setDuelWinner] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,7 +99,9 @@ export default function App() {
         const subResponse = await fetch('/data/sujets.txt');
         if (subResponse.ok) {
           const subText = await subResponse.text();
-          setSubjectsList(subText.split('\n').filter(line => line.trim() !== ''));
+          const subjects = subText.split('\n').filter(line => line.trim() !== '');
+          setSubjectsList(subjects);
+          if (subjects.length > 0) setDuelSubject(subjects[Math.floor(Math.random() * subjects.length)]);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -171,6 +182,52 @@ export default function App() {
     setShowSubjectBank(false);
   };
 
+  const startNewDuel = () => {
+    const randomSub = subjectsList[Math.floor(Math.random() * subjectsList.length)];
+    setDuelSubject(randomSub);
+    setDuelPlans({
+      1: JSON.parse(JSON.stringify(INITIAL_PLAN)),
+      2: JSON.parse(JSON.stringify(INITIAL_PLAN))
+    });
+    setDuelTurn(1);
+    setDuelWinner(null);
+  };
+
+  const duelAction = (arg: Argument) => {
+    if (duelWinner) return;
+
+    const currentPlayerPlan = duelPlans[duelTurn];
+    const nextPlayer = duelTurn === 1 ? 2 : 1;
+
+    // Find first empty subpart in development
+    let updated = false;
+    const newDev = currentPlayerPlan.development.map(part => {
+      if (updated) return part;
+      const newSubParts = part.subParts.map(sub => {
+        if (!updated && !sub.content) {
+          updated = true;
+          return { ...sub, content: arg.text };
+        }
+        return sub;
+      });
+      return { ...part, subParts: newSubParts };
+    });
+
+    if (updated) {
+      setDuelPlans({
+        ...duelPlans,
+        [duelTurn]: { ...currentPlayerPlan, development: newDev }
+      });
+      setDuelTurn(nextPlayer);
+
+      // Check if both plans are full
+      const isFull = (p: EssayPlan) => p.development.every(part => part.subParts.every(sub => sub.content !== ''));
+      if (isFull(duelPlans[1]) && isFull(duelPlans[2])) {
+        setDuelWinner(0); // Draw or end of game
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-slate-900 font-sans selection:bg-indigo-100">
       {/* Header */}
@@ -205,6 +262,16 @@ export default function App() {
                 )}
               >
                 Aperçu
+              </button>
+              <button 
+                onClick={() => setActiveTab('duel')}
+                className={cn(
+                  "px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+                  activeTab === 'duel' ? "bg-white shadow-sm text-indigo-600" : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                <RotateCcw size={14} className={cn(activeTab === 'duel' && "animate-spin-slow")} />
+                Mode Duel
               </button>
             </div>
             <button 
@@ -260,7 +327,11 @@ export default function App() {
                     e.dataTransfer.setData('text/plain', arg.text);
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-700 cursor-grab active:cursor-grabbing group hover:border-indigo-200 hover:bg-indigo-50/30 transition-all transform hover:scale-[1.02]"
+                  onClick={() => activeTab === 'duel' && duelAction(arg)}
+                  className={cn(
+                    "p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-700 cursor-grab active:cursor-grabbing group hover:border-indigo-200 hover:bg-indigo-50/30 transition-all transform hover:scale-[1.02]",
+                    activeTab === 'duel' && "cursor-pointer"
+                  )}
                 >
                   <div className="flex justify-between items-start gap-2 mb-1">
                     <span className="text-[10px] font-bold uppercase text-indigo-400 tracking-widest">{arg.category}</span>
@@ -272,277 +343,369 @@ export default function App() {
             
             <div className="mt-6 pt-6 border-t border-slate-100">
               <p className="text-xs text-slate-400 italic">
-                Astuce : Copiez-collez les arguments dans votre plan pour gagner du temps.
+                {activeTab === 'duel' 
+                  ? "Cliquez sur un argument pour l'ajouter à votre plan !" 
+                  : "Astuce : Copiez-collez les arguments dans votre plan pour gagner du temps."}
               </p>
             </div>
           </div>
         </aside>
 
-        {/* Center: Plan Editor */}
+        {/* Center: Plan Editor / Duel Mode */}
         <div className="lg:col-span-9 space-y-8">
-          {/* Subject Input */}
-          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <Type className="text-amber-600 w-5 h-5" />
+          {activeTab === 'duel' ? (
+            <div className="space-y-8">
+              {/* Duel Header */}
+              <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-gradient-x" />
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Duel de Dissertation</h2>
+                <p className="text-slate-500 mb-6 max-w-xl mx-auto">Chaque joueur doit compléter son plan en choisissant les meilleurs arguments à tour de rôle.</p>
+                
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8">
+                  <span className="text-[10px] font-bold uppercase text-indigo-400 tracking-widest block mb-2">Sujet du Duel</span>
+                  <p className="text-xl font-medium text-slate-800">{duelSubject}</p>
                 </div>
-                <h2 className="text-lg font-bold text-slate-900">Le Sujet</h2>
-              </div>
-              <button 
-                onClick={() => setShowSubjectBank(true)}
-                className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold text-sm bg-indigo-50 px-4 py-2 rounded-lg transition-all"
-              >
-                <Search size={16} />
-                Banque de sujets
-              </button>
-            </div>
-            <textarea
-              value={plan.subject}
-              onChange={(e) => setPlan({ ...plan, subject: e.target.value })}
-              placeholder="Entrez votre sujet de dissertation ici..."
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-lg font-medium resize-none min-h-[100px]"
-            />
-          </section>
 
-          {activeTab === 'edit' ? (
-            <div className="space-y-8 pb-20">
-              {/* Introduction */}
-              <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                  <ChevronRight size={18} className="text-slate-400" />
-                  <h3 className="font-bold text-slate-800">I. Introduction</h3>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Accroche</label>
-                    <input 
-                      type="text" 
-                      value={plan.introduction.accroche}
-                      onChange={(e) => setPlan({...plan, introduction: {...plan.introduction, accroche: e.target.value}})}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                      placeholder="Citation, fait historique, actualité..."
-                    />
+                <div className="flex items-center justify-center gap-12">
+                  <div className={cn(
+                    "flex flex-col items-center gap-2 transition-all",
+                    duelTurn === 1 ? "scale-110" : "opacity-40 grayscale"
+                  )}>
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-indigo-200">J1</div>
+                    <span className="font-bold text-slate-700">Joueur 1</span>
+                    {duelTurn === 1 && <motion.div layoutId="turn" className="h-1 w-8 bg-indigo-500 rounded-full mt-1" />}
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Problématique</label>
-                    <textarea 
-                      value={plan.introduction.problematique}
-                      onChange={(e) => setPlan({...plan, introduction: {...plan.introduction, problematique: e.target.value}})}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                      rows={2}
-                      placeholder="La question centrale à laquelle vous allez répondre..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Annonce du plan</label>
-                    <input 
-                      type="text" 
-                      value={plan.introduction.annoncePlan}
-                      onChange={(e) => setPlan({...plan, introduction: {...plan.introduction, annoncePlan: e.target.value}})}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                      placeholder="Dans une première partie, nous verrons... puis..."
-                    />
+
+                  <div className="text-slate-300 font-black text-4xl italic">VS</div>
+
+                  <div className={cn(
+                    "flex flex-col items-center gap-2 transition-all",
+                    duelTurn === 2 ? "scale-110" : "opacity-40 grayscale"
+                  )}>
+                    <div className="w-16 h-16 rounded-2xl bg-rose-500 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-rose-200">J2</div>
+                    <span className="font-bold text-slate-700">Joueur 2</span>
+                    {duelTurn === 2 && <motion.div layoutId="turn" className="h-1 w-8 bg-rose-500 rounded-full mt-1" />}
                   </div>
                 </div>
+
+                <button 
+                  onClick={startNewDuel}
+                  className="mt-8 text-slate-400 hover:text-indigo-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2 mx-auto"
+                >
+                  <RotateCcw size={14} />
+                  Nouveau Sujet
+                </button>
               </section>
 
-              {/* Development */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <Layout size={20} className="text-indigo-500" />
-                    II. Développement
-                  </h3>
+              {/* Duel Plans Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[1, 2].map(playerNum => {
+                  const pNum = playerNum as 1 | 2;
+                  const pPlan = duelPlans[pNum];
+                  return (
+                    <div key={pNum} className={cn(
+                      "bg-white rounded-2xl border-2 p-6 transition-all",
+                      duelTurn === pNum ? (pNum === 1 ? "border-indigo-500 shadow-lg shadow-indigo-50" : "border-rose-500 shadow-lg shadow-rose-50") : "border-slate-100 opacity-80"
+                    )}>
+                      <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
+                        <div className={cn("w-6 h-6 rounded-md flex items-center justify-center text-white text-xs", pNum === 1 ? "bg-indigo-600" : "bg-rose-500")}>
+                          {pNum}
+                        </div>
+                        Plan du Joueur {pNum}
+                      </h3>
+
+                      <div className="space-y-6">
+                        {pPlan.development.map((part, pIdx) => (
+                          <div key={part.id} className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{pIdx + 1}. {part.title}</h4>
+                            {part.subParts.map((sub, sIdx) => (
+                              <div 
+                                key={sub.id} 
+                                className={cn(
+                                  "p-3 rounded-xl border text-sm min-h-[60px] flex items-center justify-center transition-all",
+                                  sub.content 
+                                    ? "bg-slate-50 border-slate-100 text-slate-700" 
+                                    : (duelTurn === pNum ? "bg-indigo-50/30 border-dashed border-indigo-200 text-indigo-400 animate-pulse" : "bg-slate-50/50 border-dashed border-slate-200 text-slate-300")
+                                )}
+                              >
+                                {sub.content || `Argument ${pIdx + 1}.${sIdx + 1}`}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Subject Input */}
+              <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <Type className="text-amber-600 w-5 h-5" />
+                    </div>
+                    <h2 className="text-lg font-bold text-slate-900">Le Sujet</h2>
+                  </div>
                   <button 
-                    onClick={addPart}
-                    className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold text-sm"
+                    onClick={() => setShowSubjectBank(true)}
+                    className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold text-sm bg-indigo-50 px-4 py-2 rounded-lg transition-all"
                   >
-                    <Plus size={18} />
-                    Ajouter une partie
+                    <Search size={16} />
+                    Banque de sujets
                   </button>
                 </div>
+                <textarea
+                  value={plan.subject}
+                  onChange={(e) => setPlan({ ...plan, subject: e.target.value })}
+                  placeholder="Entrez votre sujet de dissertation ici..."
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-lg font-medium resize-none min-h-[100px]"
+                />
+              </section>
 
-                {plan.development.map((part, pIdx) => (
-                  <motion.div 
-                    key={part.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
-                  >
-                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="font-bold text-indigo-600">{pIdx + 1}.</span>
-                        <input 
-                          type="text"
-                          value={part.title}
-                          onChange={(e) => {
-                            const newDev = [...plan.development];
-                            newDev[pIdx].title = e.target.value;
-                            setPlan({ ...plan, development: newDev });
-                          }}
-                          className="bg-transparent font-bold text-slate-800 outline-none focus:border-b border-indigo-300 w-full"
-                        />
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setPlan({ ...plan, development: plan.development.filter(p => p.id !== part.id) });
-                        }}
-                        className="text-slate-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              {activeTab === 'edit' ? (
+                <div className="space-y-8 pb-20">
+                  {/* Introduction */}
+                  <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+                      <ChevronRight size={18} className="text-slate-400" />
+                      <h3 className="font-bold text-slate-800">I. Introduction</h3>
                     </div>
                     <div className="p-6 space-y-4">
-                      {part.subParts.map((sub, sIdx) => (
-                        <div key={sub.id} className="flex gap-4">
-                          <div className="pt-3">
-                            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                              {pIdx + 1}.{sIdx + 1}
-                            </div>
-                          </div>
-                          <div className="flex-1 relative group/sub">
-                            <textarea 
-                              value={sub.content}
-                              onChange={(e) => updateSubPart(part.id, sub.id, e.target.value)}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Accroche</label>
+                        <input 
+                          type="text" 
+                          value={plan.introduction.accroche}
+                          onChange={(e) => setPlan({...plan, introduction: {...plan.introduction, accroche: e.target.value}})}
+                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Citation, fait historique, actualité..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Problématique</label>
+                        <textarea 
+                          value={plan.introduction.problematique}
+                          onChange={(e) => setPlan({...plan, introduction: {...plan.introduction, problematique: e.target.value}})}
+                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                          rows={2}
+                          placeholder="La question centrale à laquelle vous allez répondre..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Annonce du plan</label>
+                        <input 
+                          type="text" 
+                          value={plan.introduction.annoncePlan}
+                          onChange={(e) => setPlan({...plan, introduction: {...plan.introduction, annoncePlan: e.target.value}})}
+                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Dans une première partie, nous verrons... puis..."
+                        />
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Development */}
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <Layout size={20} className="text-indigo-500" />
+                        II. Développement
+                      </h3>
+                      <button 
+                        onClick={addPart}
+                        className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold text-sm"
+                      >
+                        <Plus size={18} />
+                        Ajouter une partie
+                      </button>
+                    </div>
+
+                    {plan.development.map((part, pIdx) => (
+                      <motion.div 
+                        key={part.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
+                      >
+                        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="font-bold text-indigo-600">{pIdx + 1}.</span>
+                            <input 
+                              type="text"
+                              value={part.title}
+                              onChange={(e) => {
+                                const newDev = [...plan.development];
+                                newDev[pIdx].title = e.target.value;
+                                setPlan({ ...plan, development: newDev });
                               }}
-                              onDragLeave={(e) => {
-                                e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                              }}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                const text = e.dataTransfer.getData('text/plain');
-                                if (text) {
-                                  const currentContent = sub.content;
-                                  const newContent = currentContent 
-                                    ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
-                                    : text;
-                                  updateSubPart(part.id, sub.id, newContent);
-                                }
-                              }}
-                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
-                              rows={2}
-                              placeholder="Déposez un argument ici ou écrivez..."
+                              className="bg-transparent font-bold text-slate-800 outline-none focus:border-b border-indigo-300 w-full"
                             />
-                            <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
-                              <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
-                            </div>
                           </div>
                           <button 
                             onClick={() => {
-                              const newDev = [...plan.development];
-                              newDev[pIdx].subParts = newDev[pIdx].subParts.filter(s => s.id !== sub.id);
-                              setPlan({ ...plan, development: newDev });
+                              setPlan({ ...plan, development: plan.development.filter(p => p.id !== part.id) });
                             }}
-                            className="pt-3 text-slate-300 hover:text-red-400 transition-colors"
+                            className="text-slate-400 hover:text-red-500 transition-colors"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
-                      ))}
-                      <button 
-                        onClick={() => addSubPart(part.id)}
-                        className="ml-10 flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-xs font-bold uppercase tracking-wider transition-colors"
-                      >
-                        <Plus size={14} />
-                        Ajouter une sous-partie
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Conclusion */}
-              <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                  <ChevronRight size={18} className="text-slate-400" />
-                  <h3 className="font-bold text-slate-800">III. Conclusion</h3>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Synthèse</label>
-                    <textarea 
-                      value={plan.conclusion.synthese}
-                      onChange={(e) => setPlan({...plan, conclusion: {...plan.conclusion, synthese: e.target.value}})}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                      rows={2}
-                      placeholder="Résumé des points clés du développement..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Réponse à la problématique</label>
-                    <textarea 
-                      value={plan.conclusion.reponse}
-                      onChange={(e) => setPlan({...plan, conclusion: {...plan.conclusion, reponse: e.target.value}})}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                      rows={2}
-                      placeholder="Votre conclusion finale et nuancée..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Ouverture</label>
-                    <input 
-                      type="text" 
-                      value={plan.conclusion.ouverture}
-                      onChange={(e) => setPlan({...plan, conclusion: {...plan.conclusion, ouverture: e.target.value}})}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                      placeholder="Élargissement du sujet, autre perspective..."
-                    />
-                  </div>
-                </div>
-              </section>
-            </div>
-          ) : (
-            /* Preview Mode */
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 shadow-sm min-h-[80vh] font-serif prose prose-slate max-w-none">
-              <div className="text-center mb-12 border-b border-slate-100 pb-8">
-                <h1 className="text-3xl font-bold text-slate-900 mb-4">{plan.subject || "Sans titre"}</h1>
-                <p className="text-slate-500 italic">Plan de dissertation structuré</p>
-              </div>
-
-              <div className="space-y-12">
-                <section>
-                  <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">I. Introduction</h2>
-                  <div className="space-y-4 pl-6 border-l-2 border-slate-100">
-                    <p><strong>Accroche :</strong> {plan.introduction.accroche || "..."}</p>
-                    <p><strong>Problématique :</strong> {plan.introduction.problematique || "..."}</p>
-                    <p><strong>Annonce du plan :</strong> {plan.introduction.annoncePlan || "..."}</p>
-                  </div>
-                </section>
-
-                <section>
-                  <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">II. Développement</h2>
-                  <div className="space-y-8">
-                    {plan.development.map((p, i) => (
-                      <div key={p.id} className="pl-6 border-l-2 border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 mb-4">{i + 1}. {p.title}</h3>
-                        <ul className="space-y-3 list-none p-0">
-                          {p.subParts.map((s, j) => (
-                            <li key={s.id} className="text-slate-700 leading-relaxed">
-                              <span className="font-bold text-indigo-400 mr-2">{i + 1}.{j + 1}</span>
-                              {s.content || "..."}
-                            </li>
+                        <div className="p-6 space-y-4">
+                          {part.subParts.map((sub, sIdx) => (
+                            <div key={sub.id} className="flex gap-4">
+                              <div className="pt-3">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                  {pIdx + 1}.{sIdx + 1}
+                                </div>
+                              </div>
+                              <div className="flex-1 relative group/sub">
+                                <textarea 
+                                  value={sub.content}
+                                  onChange={(e) => updateSubPart(part.id, sub.id, e.target.value)}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                  }}
+                                  onDragLeave={(e) => {
+                                    e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                    const text = e.dataTransfer.getData('text/plain');
+                                    if (text) {
+                                      const currentContent = sub.content;
+                                      const newContent = currentContent 
+                                        ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
+                                        : text;
+                                      updateSubPart(part.id, sub.id, newContent);
+                                    }
+                                  }}
+                                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
+                                  rows={2}
+                                  placeholder="Déposez un argument ici ou écrivez..."
+                                />
+                                <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
+                                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  const newDev = [...plan.development];
+                                  newDev[pIdx].subParts = newDev[pIdx].subParts.filter(s => s.id !== sub.id);
+                                  setPlan({ ...plan, development: newDev });
+                                }}
+                                className="pt-3 text-slate-300 hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           ))}
-                        </ul>
-                      </div>
+                          <button 
+                            onClick={() => addSubPart(part.id)}
+                            className="ml-10 flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-xs font-bold uppercase tracking-wider transition-colors"
+                          >
+                            <Plus size={14} />
+                            Ajouter une sous-partie
+                          </button>
+                        </div>
+                      </motion.div>
                     ))}
                   </div>
-                </section>
 
-                <section>
-                  <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">III. Conclusion</h2>
-                  <div className="space-y-4 pl-6 border-l-2 border-slate-100">
-                    <p><strong>Synthèse :</strong> {plan.conclusion.synthese || "..."}</p>
-                    <p><strong>Réponse :</strong> {plan.conclusion.reponse || "..."}</p>
-                    <p><strong>Ouverture :</strong> {plan.conclusion.ouverture || "..."}</p>
+                  {/* Conclusion */}
+                  <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+                      <ChevronRight size={18} className="text-slate-400" />
+                      <h3 className="font-bold text-slate-800">III. Conclusion</h3>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Synthèse</label>
+                        <textarea 
+                          value={plan.conclusion.synthese}
+                          onChange={(e) => setPlan({...plan, conclusion: {...plan.conclusion, synthese: e.target.value}})}
+                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                          rows={2}
+                          placeholder="Résumé des points clés du développement..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Réponse à la problématique</label>
+                        <textarea 
+                          value={plan.conclusion.reponse}
+                          onChange={(e) => setPlan({...plan, conclusion: {...plan.conclusion, reponse: e.target.value}})}
+                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                          rows={2}
+                          placeholder="Votre conclusion finale et nuancée..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Ouverture</label>
+                        <input 
+                          type="text" 
+                          value={plan.conclusion.ouverture}
+                          onChange={(e) => setPlan({...plan, conclusion: {...plan.conclusion, ouverture: e.target.value}})}
+                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Élargissement du sujet, autre perspective..."
+                        />
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                /* Preview Mode */
+                <div className="bg-white rounded-2xl border border-slate-200 p-10 shadow-sm min-h-[80vh] font-serif prose prose-slate max-w-none">
+                  <div className="text-center mb-12 border-b border-slate-100 pb-8">
+                    <h1 className="text-3xl font-bold text-slate-900 mb-4">{plan.subject || "Sans titre"}</h1>
+                    <p className="text-slate-500 italic">Plan de dissertation structuré</p>
                   </div>
-                </section>
-              </div>
-            </div>
+
+                  <div className="space-y-12">
+                    <section>
+                      <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">I. Introduction</h2>
+                      <div className="space-y-4 pl-6 border-l-2 border-slate-100">
+                        <p><strong>Accroche :</strong> {plan.introduction.accroche || "..."}</p>
+                        <p><strong>Problématique :</strong> {plan.introduction.problematique || "..."}</p>
+                        <p><strong>Annonce du plan :</strong> {plan.introduction.annoncePlan || "..."}</p>
+                      </div>
+                    </section>
+
+                    <section>
+                      <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">II. Développement</h2>
+                      <div className="space-y-8">
+                        {plan.development.map((p, i) => (
+                          <div key={p.id} className="pl-6 border-l-2 border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-800 mb-4">{i + 1}. {p.title}</h3>
+                            <ul className="space-y-3 list-none p-0">
+                              {p.subParts.map((s, j) => (
+                                <li key={s.id} className="text-slate-700 leading-relaxed">
+                                  <span className="font-bold text-indigo-400 mr-2">{i + 1}.{j + 1}</span>
+                                  {s.content || "..."}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section>
+                      <h2 className="text-xl font-bold text-indigo-600 border-b border-indigo-100 pb-2 mb-6 uppercase tracking-widest">III. Conclusion</h2>
+                      <div className="space-y-4 pl-6 border-l-2 border-slate-100">
+                        <p><strong>Synthèse :</strong> {plan.conclusion.synthese || "..."}</p>
+                        <p><strong>Réponse :</strong> {plan.conclusion.reponse || "..."}</p>
+                        <p><strong>Ouverture :</strong> {plan.conclusion.ouverture || "..."}</p>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

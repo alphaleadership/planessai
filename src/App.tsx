@@ -86,7 +86,7 @@ export default function App() {
         // Fetch arguments
         for (const cat of CATEGORIES) {
           const fileName = cat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          const response = await fetch(`/data/${fileName}.txt`);
+          const response = await fetch(`/planessai/data/${fileName}.txt`);
           if (response.ok) {
             const text = await response.text();
             const lines = text.split('\n').filter(line => line.trim() !== '');
@@ -102,7 +102,7 @@ export default function App() {
         setArgumentsList(allArgs);
 
         // Fetch subjects
-        const subResponse = await fetch('/data/sujets.txt');
+        const subResponse = await fetch('/planessai/data/sujets.txt');
         if (subResponse.ok) {
           const subText = await subResponse.text();
           const subjects = subText.split('\n').filter(line => line.trim() !== '');

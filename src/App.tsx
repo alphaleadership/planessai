@@ -91,11 +91,16 @@ export default function App() {
             const text = await response.text();
             const lines = text.split('\n').filter(line => line.trim() !== '');
             lines.forEach((line, index) => {
-              allArgs.push({
+              const arg=line.split(":").length==2 ? line.split(":")[1].trim() :null
+              const a:Argument={
                 id: `${fileName}-${index}`,
                 category: cat,
-                text: line.trim()
-              });
+                text: line.split(":")[0].trim()
+              }
+              if(arg){
+                a.argument=arg
+              }
+              allArgs.push(a);
             });
           }
         }

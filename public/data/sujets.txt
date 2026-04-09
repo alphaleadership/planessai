@@ -13,8 +13,6 @@ L'histoire a-t-elle un sens ?
 L'art peut-il se passer de règles ?
 La science peut-elle tout expliquer ?
 La justice est-elle seulement le respect des lois ?
-
-
 1.1.1. Est-il légitime d'utiliser des animaux dans la publicité ?
 1.1.2. Pourquoi l'utilisation d'un animal dans la publicité rassure-t-elle le consommateur ?
 1.1.3. Nos représentations des animaux reflètent-elle notre manière de les traiter ?
@@ -24,12 +22,9 @@ La justice est-elle seulement le respect des lois ?
 1.3.1. Pourquoi les fictions représentant des créatures hybrides ont-elle du succès ?
 1.3.2. Les créatures mi-humaines mi-animales remettent-elles en cause notre humanité ?
 1.3.3. Doit-on redouter notre part d'animalité ?
-
-2.1. Définition de la condition animale
 2.1.1. Les humains sont-ils des animaux comme les autres ?
 2.1.2. Pourquoi les humains ont-ils douté du fait que les animaux sont sensibles ?
 2.1.3. Les animaux ont eu un statut de « biens meubles » dans le code civil jusqu'en 2014 : comment expliquer cette assimilation de l'animal à un objet ?
-2.2. De simple bête à meilleur ami
 2.2.1. Peut-on posséder un animal ?
 2.2.1. Pourquoi l'humanité accorde-t-elle autant d'importance à la domestication ?
 2.2.1. Notre société exagère-t-elle notre rapport affectif aux animaux ?
@@ -60,4 +55,3 @@ La justice est-elle seulement le respect des lois ?
 4.3.3. Les animaux ont-ils des droits ?
 4.3.4. Avons-nous des devoirs envers les animaux ?
 4.3.5. Comment faire respecter les droits des animaux ?
-3

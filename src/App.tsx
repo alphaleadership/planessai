@@ -696,7 +696,9 @@ export default function App() {
                                   if (argData) {
                                     const arg = JSON.parse(argData);
                                     updateSubPartTitle(part.id, sub.id, arg.text);
-                                    addArgumentAtStart(part.id, sub.id, arg.argument || arg.text);
+                                    if (sub.arguments.length === 0) {
+                                      addArgumentAtStart(part.id, sub.id, arg.argument || arg.text);
+                                    }
                                   }
                                 }}
                               >

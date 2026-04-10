@@ -695,79 +695,85 @@ export default function App() {
                                   const argData = e.dataTransfer.getData('application/json');
                                   if (argData) {
                                     const arg = JSON.parse(argData);
-                                    updateSubPartTitle(part.id, sub.id, arg.text);
                                     if (sub.arguments.length === 0) {
+                                      updateSubPartTitle(part.id, sub.id, arg.text);
                                       addArgumentAtStart(part.id, sub.id, arg.argument || arg.text);
                                     }
                                   }
                                 }}
                               >
-                                {sub.arguments.map((arg, aIdx) => (
-                                  <div key={arg.id} className="flex gap-4">
-                                    <div className="pt-3">
-                                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                        {aIdx + 1}
-                                      </div>
-                                    </div>
-                                    <div className="flex-1 relative group/sub space-y-2">
-                                      <div className="relative">
-                                        <textarea 
-                                          value={arg.content}
-                                          onChange={(e) => updateArgument(part.id, sub.id, arg.id, e.target.value, 'content')}
-                                          onDragOver={(e) => {
-                                            e.preventDefault();
-                                            e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                          }}
-                                          onDragLeave={(e) => {
-                                            e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                          }}
-                                          onDrop={(e) => {
-                                            e.preventDefault();
-                                            e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                            const argData = e.dataTransfer.getData('application/json');
-                                            let dropText = e.dataTransfer.getData('text/plain');
-                                            if (argData) {
-                                              const droppedArg = JSON.parse(argData);
-                                              dropText = droppedArg.argument || droppedArg.text;
-                                            }
-                                            if (dropText) {
-                                              const currentContent = arg.content;
-                                              const newContent = currentContent 
-                                                ? (currentContent.endsWith(' ') ? currentContent + dropText : currentContent + ' ' + dropText)
-                                                : dropText;
-                                              updateArgument(part.id, sub.id, arg.id, newContent, 'content');
-                                            }
-                                          }}
-                                          className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
-                                          rows={2}
-                                          placeholder="Déposez un argument ici ou écrivez..."
-                                        />
-                                        <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
-                                          <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
+                                {sub.arguments.length === 0 ? (
+                                  <div className="min-h-[40px] flex items-center justify-center text-slate-400 text-xs italic border-2 border-dashed border-slate-200 rounded-lg">
+                                    Déposez un argument ici pour commencer
+                                  </div>
+                                ) : (
+                                  sub.arguments.map((arg, aIdx) => (
+                                    <div key={arg.id} className="flex gap-4">
+                                      <div className="pt-3">
+                                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                          {aIdx + 1}
                                         </div>
                                       </div>
-                                      <input 
-                                        type="text"
-                                        value={arg.references || ''}
-                                        onChange={(e) => updateArgument(part.id, sub.id, arg.id, e.target.value, 'references')}
-                                        className="w-full p-2 bg-white border border-slate-100 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                                        placeholder="Références (auteur, œuvre, date...)"
-                                      />
+                                      <div className="flex-1 relative group/sub space-y-2">
+                                        <div className="relative">
+                                          <textarea 
+                                            value={arg.content}
+                                            onChange={(e) => updateArgument(part.id, sub.id, arg.id, e.target.value, 'content')}
+                                            onDragOver={(e) => {
+                                              e.preventDefault();
+                                              e.currentTarget.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                            }}
+                                            onDragLeave={(e) => {
+                                              e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                            }}
+                                            onDrop={(e) => {
+                                              e.preventDefault();
+                                              e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+                                              const argData = e.dataTransfer.getData('application/json');
+                                              let dropText = e.dataTransfer.getData('text/plain');
+                                              if (argData) {
+                                                const droppedArg = JSON.parse(argData);
+                                                dropText = droppedArg.argument || droppedArg.text;
+                                              }
+                                              if (dropText) {
+                                                const currentContent = arg.content;
+                                                const newContent = currentContent 
+                                                  ? (currentContent.endsWith(' ') ? currentContent + dropText : currentContent + ' ' + dropText)
+                                                  : dropText;
+                                                updateArgument(part.id, sub.id, arg.id, newContent, 'content');
+                                              }
+                                            }}
+                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-all"
+                                            rows={2}
+                                            placeholder="Déposez un argument ici ou écrivez..."
+                                          />
+                                          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-indigo-300 rounded-xl opacity-0 group-drag-over:opacity-100 transition-opacity flex items-center justify-center bg-indigo-50/20">
+                                            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Relâcher pour insérer</span>
+                                          </div>
+                                        </div>
+                                        <input 
+                                          type="text"
+                                          value={arg.references || ''}
+                                          onChange={(e) => updateArgument(part.id, sub.id, arg.id, e.target.value, 'references')}
+                                          className="w-full p-2 bg-white border border-slate-100 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                          placeholder="Références (auteur, œuvre, date...)"
+                                        />
+                                      </div>
+                                      <button 
+                                        onClick={() => {
+                                          const newDev = [...plan.development];
+                                          newDev[pIdx].subParts = newDev[pIdx].subParts.map(s => 
+                                            s.id === sub.id ? { ...s, arguments: s.arguments.filter(a => a.id !== arg.id) } : s
+                                          );
+                                          setPlan({ ...plan, development: newDev });
+                                        }}
+                                        className="pt-3 text-slate-300 hover:text-red-400 transition-colors"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
                                     </div>
-                                    <button 
-                                      onClick={() => {
-                                        const newDev = [...plan.development];
-                                        newDev[pIdx].subParts = newDev[pIdx].subParts.map(s => 
-                                          s.id === sub.id ? { ...s, arguments: s.arguments.filter(a => a.id !== arg.id) } : s
-                                        );
-                                        setPlan({ ...plan, development: newDev });
-                                      }}
-                                      className="pt-3 text-slate-300 hover:text-red-400 transition-colors"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
-                                ))}
+                                  ))
+                                )}
                                 <button 
                                   onClick={() => addArgument(part.id, sub.id)}
                                   className="flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-[10px] font-bold uppercase tracking-wider transition-colors"

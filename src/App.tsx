@@ -98,7 +98,7 @@ export default function App() {
                 text: line.split(":")[0].trim()
               }
               if(arg){
-                a.argument=arg
+                a.argument=arg.replaceAll("—","\n").trim()
               }
               allArgs.push(a);
             });

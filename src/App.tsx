@@ -695,8 +695,8 @@ export default function App() {
                                   const argData = e.dataTransfer.getData('application/json');
                                   if (argData) {
                                     const arg = JSON.parse(argData);
-                                    if (sub.arguments.length === 0) {
-                                      updateSubPartTitle(part.id, sub.id, arg.text);
+                                    updateSubPartTitle(part.id, sub.id, arg.text);
+                                    if (sub.arguments.length === 1) {
                                       addArgumentAtStart(part.id, sub.id, arg.argument || arg.text);
                                     }
                                   }

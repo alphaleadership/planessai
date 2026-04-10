@@ -737,9 +737,7 @@ export default function App() {
                                               }
                                               if (dropText) {
                                                 const currentContent = arg.content;
-                                                const newContent = currentContent 
-                                                  ? (currentContent.endsWith(' ') ? currentContent + dropText : currentContent + ' ' + dropText)
-                                                  : dropText;
+                                                const newContent =  dropText;
                                                 updateArgument(part.id, sub.id, arg.id, newContent, 'content');
                                               }
                                             }}

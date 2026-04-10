@@ -189,6 +189,27 @@ export default function App() {
     }));
   };
 
+  const addArgumentAtStart = (partId: string, subPartId: string, content: string = '') => {
+    setPlan(prev => ({
+      ...prev,
+      development: prev.development.map(p => 
+        p.id === partId 
+          ? { 
+              ...p, 
+              subParts: p.subParts.map(s => 
+                s.id === subPartId 
+                  ? { 
+                      ...s, 
+                      arguments: [{ id: `${s.id}-arg-${s.arguments.length + 1}`, content, references: '' }, ...s.arguments] 
+                    }
+                  : s
+              )
+            }
+          : p
+      )
+    }));
+  };
+
   const updateSubPartTitle = (partId: string, subId: string, title: string) => {
     setPlan(prev => ({
       ...prev,
@@ -400,6 +421,7 @@ export default function App() {
                   draggable="true"
                   onDragStart={(e: React.DragEvent) => {
                     e.dataTransfer.setData('text/plain', arg.text);
+                    e.dataTransfer.setData('application/json', JSON.stringify(arg));
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
                   onClick={() => activeTab === 'duel' && duelAction(arg)}
@@ -665,7 +687,19 @@ export default function App() {
                                 </button>
                               </div>
 
-                              <div className="space-y-4 ml-6">
+                              <div 
+                                className="space-y-4 ml-6"
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  const argData = e.dataTransfer.getData('application/json');
+                                  if (argData) {
+                                    const arg = JSON.parse(argData);
+                                    updateSubPartTitle(part.id, sub.id, arg.text);
+                                    addArgumentAtStart(part.id, sub.id, arg.argument || arg.text);
+                                  }
+                                }}
+                              >
                                 {sub.arguments.map((arg, aIdx) => (
                                   <div key={arg.id} className="flex gap-4">
                                     <div className="pt-3">
@@ -688,12 +722,17 @@ export default function App() {
                                           onDrop={(e) => {
                                             e.preventDefault();
                                             e.currentTarget.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
-                                            const text = e.dataTransfer.getData('text/plain');
-                                            if (text) {
+                                            const argData = e.dataTransfer.getData('application/json');
+                                            let dropText = e.dataTransfer.getData('text/plain');
+                                            if (argData) {
+                                              const droppedArg = JSON.parse(argData);
+                                              dropText = droppedArg.argument || droppedArg.text;
+                                            }
+                                            if (dropText) {
                                               const currentContent = arg.content;
                                               const newContent = currentContent 
-                                                ? (currentContent.endsWith(' ') ? currentContent + text : currentContent + ' ' + text)
-                                                : text;
+                                                ? (currentContent.endsWith(' ') ? currentContent + dropText : currentContent + ' ' + dropText)
+                                                : dropText;
                                               updateArgument(part.id, sub.id, arg.id, newContent, 'content');
                                             }
                                           }}

@@ -107,7 +107,7 @@ export default function App() {
         setArgumentsList(allArgs);
 
         // Fetch subjects
-        const subResponse = await fetch('/planessai/data/sujets.txt');
+        const subResponse = await fetch('/data/sujets.txt');
         if (subResponse.ok) {
           const subText = await subResponse.text();
           const subjects = subText.split('\n').filter(line => line.trim() !== '');

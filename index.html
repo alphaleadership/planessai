@@ -3,11 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>générateur de plan d'essai pour l'épreuve de francais </title>
+    <title>générateur de plan d'essai pour l'épreuve de francais</title>
+    <script>
+      // Redirect from GitHub Pages to Vercel
+      if (window.location.hostname.includes('github.io')) {
+        window.location.href = 'https://planessai.vercel.app/' + window.location.pathname;
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

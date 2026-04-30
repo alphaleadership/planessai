@@ -6,7 +6,7 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [react(), tailwindcss()],base: '/planessai/', // Exemple : '/mon-projet-vite/'
+    plugins: [react(), tailwindcss()], // Exemple : '/mon-projet-vite/'
   build: {
     outDir: 'dist',
     emptyOutDir: true,

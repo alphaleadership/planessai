@@ -86,7 +86,7 @@ export default function App() {
         // Fetch arguments
         for (const cat of CATEGORIES) {
           const fileName = cat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          const response = await fetch(`/planessai/data/${fileName}.txt`);
+          const response = await fetch(`/data/${fileName}.txt`);
           if (response.ok) {
             const text = await response.text();
             const lines = text.split('\n').filter(line => line.trim() !== '');

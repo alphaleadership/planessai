@@ -6,7 +6,8 @@
     <title>générateur de plan d'essai pour l'épreuve de francais</title>
     <script>
       // Redirect from GitHub Pages to Vercel
-      if (window.location.hostname.includes('github.io')) {
+      const host = window.location.hostname;
+      if (host === 'github.io' || host.endsWith('.github.io')) {
         window.location.href = 'https://planessai.vercel.app/' ;
       }
     </script>
